@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fluoro-editor</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">fluoro<span>·</span>editor</div>
+  <div class="grow"></div>
+  <button id="btn-clear" class="btn danger" title="Empty the list (files on disk are never deleted)">Clear</button>
+  <span class="sep"></span>
+  <button id="btn-scan" class="btn">Rescan</button>
+  <label class="btn file-btn" title="Pick individual image files">Add images
+    <input type="file" id="file-input" multiple accept="image/*" hidden>
+  </label>
+  <label class="btn file-btn" title="Load a whole folder, and its config if present">Load folder
+    <input type="file" id="dir-input" webkitdirectory directory multiple hidden>
+  </label>
+  <span class="sep"></span>
+  <button id="btn-render-all" class="btn" title="Render every image with the current filters, so sweeping through the series is instant. Costs about 2 minutes for 150 frames on CPU — do it once, after you have settled the look you want.">Render all</button>
+  <button id="btn-load-cfg" class="btn" title="Load the config found in the images folder">Load config</button>
+  <button id="btn-save-cfg" class="btn accent" title="Save global + all local filters to the images folder">Save config</button>
+  <div class="drop-hint" id="drop-hint">drop images or a folder</div>
+</header>
+
+<main class="layout">
+  <!-- ── image list ────────────────────────────────────────── -->
+  <aside class="pane pane-list">
+    <div class="pane-head">
+      <span>Images</span><span class="count" id="img-count">0</span>
+      <div class="grow"></div>
+      <button class="mini-btn" id="btn-sort" title="Re-sort by name (IMG_2 before IMG_10)">sort</button>
+      <label class="mini-toggle" title="Toggle thumbnails">
+        <input type="checkbox" id="thumbs-toggle" checked><span>thumbs</span>
+      </label>
+    </div>
+    <ul class="img-list" id="img-list" tabindex="0"></ul>
+    <div class="pane-foot subtle" id="sel-info">no selection</div>
+  </aside>
+
+  <!-- ── viewport ──────────────────────────────────────────── -->
+  <section class="pane pane-view">
+    <div class="viewport" id="viewport">
+      <div class="zoomer" id="zoomer">
+        <img id="stage" alt="">
+        <!-- ROI box lives INSIDE the zoomer so it scales and pans with the image
+             instead of needing its own transform maths on every zoom step. -->
+        <div class="roi-box" id="roi-box" hidden></div>
+      </div>
+      <div class="vp-overlay" id="vp-overlay">
+        <span class="vp-name" id="vp-name">—</span>
+        <span class="vp-dim subtle" id="vp-dim"></span>
+        <span class="vp-zoom subtle" id="vp-zoom">1.0×</span>
+      </div>
+      <div class="vp-empty" id="vp-empty">load images to begin</div>
+    </div>
+  </section>
+
+  <!-- ── filters ───────────────────────────────────────────── -->
+  <aside class="pane pane-filters">
+    <div class="pane-head">
+      <span>Filters</span>
+      <div class="grow"></div>
+      <div class="seg" id="scope-seg">
+        <button data-scope="global" class="on">Global</button>
+        <button data-scope="local">Local</button>
+      </div>
+    </div>
+    <div class="scope-target subtle" id="scope-target">applies to all images</div>
+
+    <!-- Everything below lives in this one scroll container. It must be a single
+         wrapper: as direct children of the column-flex .pane-filters they would
+         shrink instead of scrolling, crushing the segmented controls. -->
+    <div class="filters-body">
+
+    <!-- 1. REGION — gates every operation, for every channel -->
+    <div class="fsub">Region</div>
+    <div class="seg wide" id="region-seg">
+      <button data-region="frame" class="on">whole frame</button>
+      <button data-region="roi">ROI only</button>
+    </div>
+    <div class="roi-row">
+      <button class="btn mini" id="roi-mode" title="Sticky ctrl+drag: click to arm it, then drag on the image to draw a new ROI">ROI mode</button>
+      <button class="btn mini" id="roi-clear" title="Clear the ROI">clear</button>
+      <span class="subtle grow"></span>
+      <span class="subtle" id="roi-info">none</span>
+    </div>
+    <div class="tiny subtle" id="roi-hint">no ROI drawn</div>
+
+    <!-- 2. CHANNEL — amount is how you isolate: R=1, G=0, B=0 -->
+    <div class="fsub">Channel</div>
+    <div class="chan-tabs" id="chan-tabs"></div>
+    <div class="chan-body" id="chan-body">
+      <div class="frow">
+        <label class="fl" for="amount">amount</label>
+        <input type="range" id="amount" min="0" max="1" step="0.01" value="1">
+        <span class="fnum-in" id="amount-val">1.00</span>
+      </div>
+      <div class="frow">
+        <label class="fl" for="blend">blend</label>
+        <select id="blend">
+          <option value="normal">normal</option>
+          <option value="difference">difference</option>
+        </select>
+      </div>
+      <div class="tiny subtle" id="chan-note"></div>
+    </div>
+
+    <!-- 3. OPERATIONS for the selected channel, in order -->
+    <div class="fsub">Order <span class="subtle">drag to reorder</span></div>
+    <ul class="forder" id="chan-order"></ul>
+    <div id="chan-ops"></div>
+
+    </div><!-- /.filters-body -->
+  </aside>
+</main>
+
+<!-- ── sweep bar ────────────────────────────────────────────── -->
+<footer class="sweepbar">
+  <button class="btn icon" id="btn-first" title="First">⏮</button>
+  <button class="btn icon" id="btn-prev" title="Previous (←)">◀</button>
+  <button class="btn icon play" id="btn-play" title="Play (space)">▶</button>
+  <button class="btn icon" id="btn-next" title="Next (→)">▶</button>
+  <button class="btn icon" id="btn-last" title="Last">⏭</button>
+  <input type="range" id="sweep" min="0" max="0" value="0">
+  <span class="sweep-label" id="sweep-label">—</span>
+  <label class="mini-toggle" title="Apply filters while sweeping">
+    <input type="checkbox" id="filters-on" checked><span>filters</span>
+  </label>
+  <span class="sep"></span>
+  <div class="warm" id="warm" hidden title="Pre-rendering frames in the background so sweeping is instant">
+    <span class="warm-label" id="warm-label">warming…</span>
+    <div class="warm-track"><div class="warm-fill" id="warm-fill"></div></div>
+  </div>
+  <button class="btn" id="btn-export" title="Export a single frame, or the whole series as video or a ZIP of images">Export</button>
+</footer>
+
+<!-- ── export dialog ──────────────────────────────────────── -->
+<!-- Built by static/export.js from /api/export/options, so the menu only offers
+     what this build can actually do (no ffmpeg -> no video item). -->
+<div class="modal-back" id="x-back" hidden>
+  <div class="modal" id="x-modal" role="dialog" aria-modal="true" aria-labelledby="x-title">
+    <div class="x-crumb" id="x-crumb"></div>
+    <h2 class="x-title" id="x-title">Export</h2>
+    <div class="x-body" id="x-body"></div>
+    <div class="x-foot">
+      <span class="x-note" id="x-note"></span>
+      <button class="btn" id="x-back-btn" hidden>Back</button>
+      <button class="btn" id="x-cancel">Cancel</button>
+      <button class="btn primary" id="x-go">Export</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/static/viewport_geometry.js"></script>
+<script src="/static/roi.js"></script>
+<script src="/static/curve.js"></script>
+<script src="/static/histogram.js"></script>
+<script src="/static/filters.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/export.js"></script>
+</body>
+</html>

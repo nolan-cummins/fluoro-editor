@@ -1,0 +1,542 @@
+/* fluoro-editor — dark, modern, no framework. One accent, CSS custom props. */
+:root {
+  --bg:        #0b0d10;
+  --bg-1:      #111419;
+  --bg-2:      #171b21;
+  --bg-3:      #1e232b;
+  --line:      #262c35;
+  --line-2:    #333b46;
+  --fg:        #e6e9ee;
+  --fg-dim:    #9aa4b2;
+  --fg-faint:  #6b7684;
+  --accent:    #4da3ff;
+  --accent-dim:#2a6fb0;
+  --warn:      #ffb454;
+  --err:       #ff6b6b;
+  --ok:        #57d9a3;
+  --r:         6px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.grow { flex: 1; }
+.subtle { color: var(--fg-faint); }
+.pad { padding: 14px; }
+
+/* ── topbar ─────────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  height: 44px; flex: 0 0 44px; background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 650; letter-spacing: .2px; font-size: 14px; }
+.brand span { color: var(--accent); }
+.drop-hint {
+  font-size: 11px; color: var(--fg-faint); border: 1px dashed var(--line-2);
+  border-radius: var(--r); padding: 3px 8px; opacity: 0; transition: opacity .15s;
+}
+body.dragging .drop-hint { opacity: 1; }
+
+/* ── buttons ────────────────────────────────────────────── */
+.btn {
+  background: var(--bg-3); color: var(--fg); border: 1px solid var(--line-2);
+  border-radius: var(--r); padding: 5px 10px; font-size: 12px; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.btn:hover { background: #262d37; border-color: #44505f; }
+.btn:active { transform: translateY(.5px); }
+.btn.icon { padding: 4px 8px; min-width: 30px; font-size: 11px; }
+.btn.icon.play { color: var(--accent); }
+.btn:disabled { opacity: .35; cursor: default; }
+.file-btn { display: inline-block; }
+.btn.accent { background: var(--accent-dim); border-color: var(--accent-dim); color: #fff; }
+.btn.accent:hover { background: #3584cc; }
+.btn.danger:hover { border-color: var(--err); color: #ffc9c9; }
+.sep { width: 1px; height: 18px; background: var(--line-2); }
+
+/* ── layout ─────────────────────────────────────────────── */
+.layout { flex: 1; display: grid; grid-template-columns: 264px 1fr 320px; min-height: 0; }
+.pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.pane-list   { border-right: 1px solid var(--line); background: var(--bg-1); }
+.pane-filters{ border-left: 1px solid var(--line);  background: var(--bg-1); }
+/* The filters pane is a COLUMN FLEX container, so every direct child is a flex
+   item with the default flex-shrink:1. When the panel's content is taller than
+   the pane (it always is), the children shrink to fit instead of overflowing —
+   and anything with overflow:hidden, like .seg, gets crushed to a 2px sliver
+   that renders as "the control is missing". The scroll container is the single
+   wrapper below; the head stays outside it so it remains pinned. */
+.pane-filters > .filters-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.pane-view   { background: var(--bg); }
+.pane-head {
+  display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  height: 34px; flex: 0 0 34px; border-bottom: 1px solid var(--line);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--fg-dim); font-weight: 600;
+}
+.count { color: var(--fg-faint); font-family: var(--mono); }
+.pane-foot {
+  padding: 6px 10px; border-top: 1px solid var(--line);
+  font-size: 11px; font-family: var(--mono); flex: 0 0 auto;
+}
+.mini-toggle { display: flex; align-items: center; gap: 4px; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .6px; color: var(--fg-faint); cursor: pointer; }
+.mini-toggle input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+.mini-btn {
+  background: transparent; color: var(--fg-faint); border: 1px solid var(--line-2);
+  border-radius: 4px; padding: 1px 6px; font-size: 10px; cursor: pointer;
+  text-transform: lowercase;
+}
+.mini-btn:hover { color: var(--fg); border-color: #44505f; }
+
+/* ── image list ─────────────────────────────────────────── */
+.img-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; outline: none; }
+.img-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px;
+  border-radius: var(--r); cursor: pointer; user-select: none;
+  border: 1px solid transparent; position: relative;
+}
+.img-row:hover { background: var(--bg-2); }
+.img-row.sel { background: #1b2c40; border-color: var(--accent-dim); }
+.img-row.current { background: #1e3550; border-color: var(--accent); }
+.img-row.current.sel { background: #23405f; }
+.img-row.bad .nm { color: var(--err); text-decoration: line-through; }
+.img-row .thumb {
+  width: 44px; height: 32px; flex: 0 0 44px; object-fit: cover;
+  border-radius: 3px; background: #000; border: 1px solid var(--line-2);
+}
+.img-list.no-thumbs .thumb { display: none; }
+.img-row .meta { min-width: 0; flex: 1; }
+.img-row .nm {
+  font-family: var(--mono); font-size: 11.5px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.img-row .dim2 { font-size: 10px; color: var(--fg-faint); font-family: var(--mono); }
+.img-row .ovr { color: var(--warn); font-size: 10px; }
+.grip { color: var(--line-2); font-size: 12px; cursor: grab; flex: 0 0 auto; }
+.rm {
+  background: transparent; border: 0; color: var(--fg-faint); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 2px 5px; border-radius: 4px;
+  opacity: 0; flex: 0 0 auto; transition: opacity .12s, color .12s, background .12s;
+}
+.img-row:hover .rm, .rm:focus-visible { opacity: 1; }
+.rm:hover { color: #fff; background: var(--err); }
+.img-row.dragging { opacity: .4; }
+.img-row.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.img-row.drop-after  { box-shadow: inset 0 -2px 0 var(--accent); }
+.list-empty { color: var(--fg-faint); font-size: 12px; text-align: center; padding: 30px 12px; }
+
+/* ── viewport ───────────────────────────────────────────── */
+.viewport { position: relative; flex: 1; overflow: hidden; display: grid; place-items: center; }
+/* position:relative so the ROI box positions against the image, not the page. */
+.zoomer { position: relative; transform-origin: 0 0; will-change: transform; }
+/* Explicit width/height are set in px from the frame's real dimensions, so the
+   zoom maths can treat 1 image px as 1 unit. Do NOT add max-width/max-height
+   here: that would scale the image down and desynchronise it from the
+   coordinate space Viewport computes in. */
+#stage { display: block; background: #000; }
+#stage.empty { display: none; }
+.vp-overlay {
+  position: absolute; left: 10px; top: 10px; display: flex; gap: 10px;
+  align-items: center; pointer-events: none; font-family: var(--mono); font-size: 11px;
+  background: rgba(11,13,16,.72); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 4px 8px; backdrop-filter: blur(6px);
+}
+.vp-name { color: var(--fg); }
+.vp-zoom { color: var(--accent); }
+.vp-empty { position: absolute; color: var(--fg-faint); font-size: 13px; }
+
+/* ── filters pane ───────────────────────────────────────── */
+.seg { display: flex; border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.seg button {
+  background: var(--bg-2); color: var(--fg-dim); border: 0; padding: 3px 9px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; cursor: pointer;
+}
+.seg button.on { background: var(--accent-dim); color: #fff; }
+.scope-target { padding: 6px 10px; font-size: 11px; border-bottom: 1px solid var(--line);
+  font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scope-target.local { color: var(--warn); }
+.filters-body { overflow-y: auto; flex: 1; padding: 8px; }
+
+/* ── sweep bar ──────────────────────────────────────────── */
+.sweepbar {
+  display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 46px;
+  flex: 0 0 46px; background: var(--bg-1); border-top: 1px solid var(--line);
+}
+#sweep { flex: 1; accent-color: var(--accent); cursor: pointer; }
+#sweep:disabled { opacity: .3; cursor: default; }
+.sweep-label { font-family: var(--mono); font-size: 11.5px; color: var(--fg-dim);
+  min-width: 190px; text-align: right; }
+
+/* ── export dialog ──────────────────────────────────────── */
+.modal-back {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4, 6, 9, .66);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-back[hidden] { display: none; }
+.modal {
+  width: min(520px, calc(100vw - 40px));
+  max-height: calc(100vh - 60px);
+  display: flex; flex-direction: column;
+  background: var(--bg-1); border: 1px solid var(--line-2);
+  border-radius: 10px; box-shadow: 0 18px 60px rgba(0, 0, 0, .6);
+  overflow: hidden;
+}
+.x-crumb {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--fg-faint);
+  padding: 12px 18px 0;
+}
+.x-title { margin: 2px 18px 12px; font-size: 15px; font-weight: 600; }
+.x-body { padding: 0 18px 4px; overflow-y: auto; min-height: 0; }
+.x-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 18px; border-top: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.x-note {
+  flex: 1; font-size: 11px; color: var(--fg-faint);
+  font-family: var(--mono); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The pick list: Frame / Series */
+.x-pick { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.x-pick button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  text-align: left; padding: 10px 12px; cursor: pointer;
+  background: var(--bg-2); color: var(--fg);
+  border: 1px solid var(--line); border-radius: var(--r);
+  font: inherit; transition: border-color .12s, background .12s;
+}
+.x-pick button:hover:not(:disabled) { border-color: var(--accent-dim); background: var(--bg-3); }
+.x-pick button:disabled { opacity: .4; cursor: not-allowed; }
+.x-pick .t { font-weight: 600; font-size: 12.5px; }
+.x-pick .d { font-size: 11px; color: var(--fg-faint); }
+
+.x-field { margin-bottom: 12px; }
+.x-field > label {
+  display: block; font-size: 11px; color: var(--fg-dim);
+  margin-bottom: 4px; letter-spacing: .02em;
+}
+.x-field input[type=text], .x-field select {
+  width: 100%; padding: 7px 9px; font: inherit; font-size: 12.5px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+}
+.x-field input[type=text]:focus, .x-field select:focus {
+  outline: none; border-color: var(--accent);
+}
+.x-field select { cursor: pointer; }
+.x-row { display: flex; align-items: center; gap: 10px; }
+.x-row input[type=range] { flex: 1; accent-color: var(--accent); }
+.x-row .v {
+  font-family: var(--mono); font-size: 11px; color: var(--fg-dim);
+  min-width: 54px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.x-hint { font-size: 10.5px; color: var(--fg-faint); margin-top: 3px; }
+.x-check { display: flex; align-items: center; gap: 7px; font-size: 12px; cursor: pointer; }
+.x-check input { accent-color: var(--accent); cursor: pointer; }
+.x-est {
+  font-family: var(--mono); font-size: 10.5px; color: var(--warn);
+  margin-top: 4px;
+}
+/* progress */
+.x-prog { margin: 6px 0 10px; }
+.x-prog .bar {
+  height: 5px; border-radius: 3px; background: var(--bg-3); overflow: hidden;
+}
+.x-prog .fill { height: 100%; width: 0%; background: var(--accent); transition: width .18s; }
+.x-prog .lbl {
+  font-family: var(--mono); font-size: 10.5px; color: var(--fg-dim);
+  margin-top: 6px; display: flex; justify-content: space-between; gap: 10px;
+}
+.x-done { display: flex; align-items: center; gap: 10px; }
+.x-done a.btn { text-decoration: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .x-prog .fill { transition: none; }
+}
+
+/* ── toast + warming ─────────────────────────────────────── */
+.warm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.warm[hidden] { display: none; }
+.warm-label {
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.warm-track {
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-2, #2a2f3a);
+  overflow: hidden;
+}
+.warm-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #5b9dff);
+  border-radius: 2px;
+  transition: width .2s ease-out;
+}
+
+/* ── filters panel (P3) ────────────────────────────────────── */
+.filters-body { padding: 0 0 24px; }
+
+.fsub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+.fsub .subtle { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.fsub .seg { margin-left: auto; }
+
+/* chain order */
+.forder { list-style: none; margin: 0; padding: 0 8px; }
+.fitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  margin-bottom: 3px;
+  border-radius: var(--r);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  cursor: grab;
+  font-size: 12px;
+}
+.fitem .fnum { color: var(--fg-faint); font-variant-numeric: tabular-nums; min-width: 14px; }
+.fitem .fnm { flex: 1; }
+.fitem .fst { font-size: 10px; color: var(--fg-faint); text-transform: uppercase; }
+.fitem.on { border-color: var(--accent); }
+.fitem.on .fst { color: var(--accent); }
+.fitem.dragging { opacity: .45; }
+.fitem.off { opacity: .62; }
+
+.tag {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #2a323d;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.tag.inh { background: #3a3320; color: #d8b46a; }
+
+.hist-canvas, .curve-canvas {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 0 12px 6px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.hist-canvas { height: 96px; }
+.curve-canvas { height: 170px; cursor: crosshair; }
+
+.roi-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 6px;
+  font-size: 11px;
+}
+.roi-row .subtle { margin-left: auto; }
+.btn.mini { padding: 3px 8px; font-size: 11px; }
+/* Match the 12px gutter the .roi-row above uses. It was a bare .tiny with no
+   padding, so "shift-drag to adjust" sat flush against the pane's left edge. */
+#roi-hint { padding: 0 12px 2px; }
+
+/* filter cards */
+.fcard {
+  margin: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.fcard.on { border-color: var(--accent-dim, #35507d); }
+.fcard.inh { opacity: .58; }
+.fhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-3);
+}
+.fhead .fen { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.fhead strong { font-size: 12px; font-weight: 600; }
+.fhead .grow { flex: 1; }
+.mini-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+.mini-btn:hover { color: var(--fg); border-color: var(--fg-faint); }
+.fbody { padding: 6px 8px 8px; }
+
+.frow {
+  display: grid;
+  grid-template-columns: 74px 1fr 58px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.frow .fl { font-size: 11px; color: var(--fg-dim); }
+.frow input[type=range] { width: 100%; }
+.frow .fnum-in {
+  width: 58px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.frow select {
+  grid-column: 2 / span 2;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.curve-row { display: flex; align-items: center; gap: 6px; margin: 4px 0 6px; }
+.tiny { font-size: 10px; margin: 0 0 2px; }
+
+/* roi box, inside the zoomer so it tracks zoom/pan for free.
+   NO background fill: the box sits on top of the pixels being judged, and a
+   translucent wash tinted every channel inside the ROI — which is fatal when
+   the whole point of the ROI is to judge colour. Outline only. */
+.roi-box {
+  position: absolute;
+  border: 1.5px dashed #ffd166;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+  /* Explicitly transparent, not merely unset: a filled box tints the pixels it
+     covers, which is fatal for judging fluorescence — you cannot tell a dim
+     sample from a bright one through a coloured wash. Outline only. */
+  background: transparent;
+  /* pointer-events:none so a PLAIN drag starting inside the box still reaches
+     the pan handler in roi.js. The box used to be its own hit target, which is
+     why a drag inside the ROI moved it and the image could only be panned from
+     outside. roi.js now hit-tests the handles geometrically against the stored
+     pixel bounds, so nothing here needs to be clickable. */
+  pointer-events: none;
+}
+/* Handles are counter-scaled by --roi-inv (set in roi.js apply()) so they stay a
+   constant size on screen however far the image is zoomed. */
+.roi-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffd166;
+  border: 1px solid #111;
+  transform: scale(var(--roi-inv, 1));
+  transform-origin: center;
+}
+.roi-handle[data-h="nw"] { left: -5px; top: -5px; cursor: nwse-resize; }
+.roi-handle[data-h="n"]  { left: calc(50% - 5px); top: -5px; cursor: ns-resize; }
+.roi-handle[data-h="ne"] { right: -5px; top: -5px; cursor: nesw-resize; }
+.roi-handle[data-h="e"]  { right: -5px; top: calc(50% - 5px); cursor: ew-resize; }
+.roi-handle[data-h="se"] { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.roi-handle[data-h="s"]  { left: calc(50% - 5px); bottom: -5px; cursor: ns-resize; }
+.roi-handle[data-h="sw"] { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.roi-handle[data-h="w"]  { left: -5px; top: calc(50% - 5px); cursor: ew-resize; }
+/* The box is an outline only (see above), so these cursors are advisory. They
+   tell the truth about the CURRENT mapping: a plain drag pans, shift is what
+   moves or resizes the box, and ROI mode is sticky ctrl. */
+.viewport { cursor: grab; }
+.viewport.grabbing { cursor: grabbing; }
+.viewport.roi-mode { cursor: crosshair; }
+/* Shift held: the pointer is over a move/resize target, so advertise it. */
+.viewport.shift { cursor: move; }
+
+/* channel tabs: swatch + name + contribution bar */
+.chan-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 0 12px;
+}
+.chan-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  color: var(--fg-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+}
+.chan-tab.on { border-color: var(--accent); color: var(--fg); background: var(--bg-3); }
+.chan-tab .sw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.chan-tab .sw-r { background: #ff6b6b; }
+.chan-tab .sw-g { background: #7ee787; }
+.chan-tab .sw-b { background: #6ba8ff; }
+/* The contribution bar sits along the bottom edge, so the tab shows both
+   "which channel" and "how much" without a separate control. */
+.chan-tab .cbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: var(--bg-1);
+}
+.chan-tab .cbar i { display: block; height: 100%; background: var(--accent); }
+
+.chan-body { padding: 4px 12px 0; }
+.chan-body .frow { grid-template-columns: 62px 1fr 52px; }
+.chan-body #blend { grid-column: 2 / span 2; }
+.chan-body.off .frow { opacity: .5; }
+.chan-body .grow { flex: 1; }
+
+.seg.wide { margin: 0 12px; display: flex; }
+.seg.wide button { flex: 1; }
+
+.toast {
+  position: fixed; bottom: 58px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-3); border: 1px solid var(--line-2); color: var(--fg);
+  padding: 8px 14px; border-radius: var(--r); font-size: 12px; z-index: 50;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.toast.err { border-color: var(--err); color: #ffd4d4; }
+.toast.ok  { border-color: var(--ok); }
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a323d; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #3a4552; }
+

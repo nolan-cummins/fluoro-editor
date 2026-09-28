@@ -1,0 +1,29 @@
+# GPU overlay. Start with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# Requires the NVIDIA container toolkit on the host (nvidia-container-toolkit,
+# plus an "nvidia" runtime in /etc/docker/daemon.json). Without it the container
+# fails to start; the plain `docker compose up` path is unaffected and the app
+# simply reports "no CUDA device" in /health.
+#
+# Only the LUT-family ops (threshold, levels, log, curve) and the histogram run
+# here — see app/gpu.py for why CLAHE deliberately does not.
+services:
+  fluoro-editor:
+    # Its OWN tag. Without this both Dockerfiles write
+    # fluoro-editor-fluoro-editor:latest, so whichever built last silently wins
+    # and the container comes up CPU-only with a perfectly healthy /health.
+    image: fluoro-editor:gpu
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      FLUORO_GPU: "1"

@@ -1,0 +1,9 @@
+# CUDA extra. -r requirements.txt FIRST: this file is what Dockerfile.gpu
+# installs, so without that line the image has cupy and no uvicorn.
+#
+# The app imports cupy lazily and falls back to NumPy if this is missing, so
+# nothing breaks without it — /health just reports why it is not using the GPU.
+# [ctk] pulls the CUDA toolkit headers cupy needs to JIT-compile its kernels;
+# without it every kernel launch raises "Failed to find CUDA headers".
+-r requirements.txt
+cupy-cuda12x[ctk]>=13.0

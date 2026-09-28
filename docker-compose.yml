@@ -1,0 +1,23 @@
+services:
+  fluoro-editor:
+    build: .
+    ports:
+      - "127.0.0.1:8800:8800"
+    volumes:
+      - ./data:/data
+      # Read-WRITE on purpose: the Save button writes its config into this
+      # folder by default, so a config sits next to the frames it describes.
+      # Point it at a copy if the source must stay pristine — Clear never
+      # deletes files, but Save does write one.
+      - ${IMAGES_DIR:-./data/images}:/images
+    environment:
+      IMAGES_DIR: /images
+      DATA_DIR: /data
+    shm_size: 2gb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8800/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,17 @@
+# Dev-only. Auto-merged by `docker compose` — it exists purely so the
+# llm-helpers browser stack (web-u-eye MCP) can reach this service by name for
+# visual verification. The browser runs in a container, so 127.0.0.1:8800 is
+# its own loopback, not the host. Delete this file for a standalone deployment.
+services:
+  fluoro-editor:
+    volumes:
+      # Bind-mount the static assets for dev so frontend edits need no rebuild.
+      - ./static:/app/static:ro
+    networks:
+      - default
+      - llm-helpers
+
+networks:
+  llm-helpers:
+    external: true
+    name: llm-helpers_default

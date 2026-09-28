@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+data/settings.json
+data/exports/
+data/images/
+data/uploads/
