@@ -2,7 +2,7 @@ services:
   fluoro-editor:
     build: .
     ports:
-      - "127.0.0.1:8800:8800"
+      - "8800:8800"
     volumes:
       - ./data:/data
       # Read-WRITE on purpose: the Save button writes its config into this
